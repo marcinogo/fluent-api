@@ -59,6 +59,6 @@ public class FluentConditionals {
 //    TODO inny sposób na task 4 bez modyfikacji tasku 2
 
     public static class GenericFluentConditional<ReturnValueType> {
-        
+
     }
 }
