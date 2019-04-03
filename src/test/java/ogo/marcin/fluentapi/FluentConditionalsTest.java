@@ -30,7 +30,7 @@ public class FluentConditionalsTest {
     }
 
     @Test(expectedExceptions = RuntimeException.class)
-    public void testFluentConditionalThrowRuntimeException() {
+    public void testFluentConditionalThrowRuntimeException() throws Throwable {
         Runnable r1 = Mockito.mock(Runnable.class);
         FluentConditionals.when(false).then(r1).orElseThrowE(new RuntimeException());
     }

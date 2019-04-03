@@ -1,64 +1,183 @@
 package ogo.marcin.fluentapi;
 
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
  * @author Marcin Ogorzalek
  */
 public class FluentConditionals {
-    public static final Runnable doNothing = () -> {};
-    private Supplier<Boolean> condition;
-    private int number;
+    private boolean condition;
+    public static Runnable doNothing = () -> {
+    };
 
-    private FluentConditionals(boolean condition) {
-        this.condition = () -> condition;
+    FluentConditionals(boolean condition) {
+        this.condition = condition;
     }
 
-    public static FluentConditionals when(boolean condition) {
-        return new FluentConditionals(condition);
+    public static <AcceptValue> ElseReturn<AcceptValue> given(Supplier<AcceptValue> stringSupplier) {
+        return new ElseReturn<>(stringSupplier.get());
     }
 
-    public static FluentConditionals when(Supplier<Boolean> supplierBoolean) {
-        return new FluentConditionals(supplierBoolean.get());
+    public static <AcceptValue> ElseReturn<AcceptValue> given(AcceptValue acceptValue) {
+        return new ElseReturn<>(acceptValue);
     }
 
-    public FluentConditionals then(Runnable runnable) {
-        if(condition.get()) runnable.run();
-        return this;
+    public static FluentConditionals when(Supplier<Boolean> supplier) {
+        return new FluentConditionals(supplier.get());
     }
 
-    public void orElse(Runnable runnable) {
-        if (!condition.get()) runnable.run();
+    public static FluentConditionals when(boolean result) {
+        return new FluentConditionals(result);
     }
 
-// TODO change back to void
-    public int orElseThrowE(RuntimeException exception){
-        if (!condition.get()) throw exception;
-        return number;
+    public <AcceptValue> ElseReturn<AcceptValue> then(Runnable runnable) {
+        if (condition)
+            runnable.run();
+        return new ElseReturn(condition);
     }
 
-// TODO change back to void
-    public int orElseThrow(Supplier<RuntimeException> exceptionSupplier){
-        return this.orElseThrowE(exceptionSupplier.get());
+    public <AcceptValue> ElseReturn<AcceptValue> thenReturn(Supplier<AcceptValue> t) {
+        return new ElseReturn<>(condition, t.get());
     }
 
-    public FluentConditionals thenReturn(Supplier<Integer> supplier) {
-        this.number = supplier.get();
-        return this;
+    public <AcceptValue> ElseReturn<AcceptValue> thenReturn(AcceptValue acceptValue) {
+        return new ElseReturn<>(condition, acceptValue);
     }
 
-    public Integer orElse(Integer number) {
-        if(condition.get()) return this.number;
-        return number;
+    public <ExceptionTypeName extends Throwable> void thenThrow(Function<String, ExceptionTypeName> rt, String message) throws Throwable {
+        throw rt.apply(message);
     }
 
-    public Integer orElse(Supplier<Integer> integerSupplier) {
-        return this.orElse(integerSupplier.get());
+    public static Runnable doNothing(){
+        return () -> {};
     }
 
-//    TODO inny sposób na task 4 bez modyfikacji tasku 2
 
-    public static class GenericFluentConditional<ReturnValueType> {
+    public static class ElseReturn<AcceptValue> {
+        private AcceptValue acceptValue;
+        private boolean condition;
 
+        ElseReturn(boolean condition) {
+            this.condition = condition;
+        }
+
+        ElseReturn(AcceptValue acceptValue) {
+            this.acceptValue = acceptValue;
+        }
+
+        ElseReturn(boolean condition, AcceptValue acceptValue) {
+            this(condition);
+            this.acceptValue = acceptValue;
+        }
+
+        public ElseReturn<AcceptValue> when(boolean condition) {
+            return new ElseReturn<>(condition, acceptValue);
+        }
+
+        public ElseReturn<AcceptValue> when(Supplier<Boolean> isTrue) {
+            return new ElseReturn<>(isTrue.get(), acceptValue);
+        }
+
+        public ElseReturn<AcceptValue> then(Consumer<AcceptValue> consumer) {
+            if (condition)
+                consumer.accept(acceptValue);
+            return new ElseReturn<>(condition, acceptValue);
+        }
+
+        public void orElse(Runnable t) {
+            if (!condition)
+                t.run();
+        }
+
+        public void orElse(Consumer<AcceptValue> consumer) {
+            if (!condition)
+                consumer.accept(acceptValue);
+        }
+
+        public AcceptValue orElse(Supplier<AcceptValue> t) {
+            return orElse(t.get());
+        }
+
+        public AcceptValue orElse(AcceptValue acceptValue) {
+            if (condition)
+                return this.acceptValue;
+            return acceptValue;
+        }
+
+        public AcceptValue orElseThrow(Supplier<Throwable> e) throws Throwable {
+            return orElseThrowE(e.get());
+        }
+
+        public AcceptValue orElseThrowE(Throwable e) throws Throwable {
+            if (!condition)
+                throw e;
+            return acceptValue;
+        }
+        public <ReturnValue> ThenReturn<AcceptValue, ReturnValue> thenReturn(Supplier<ReturnValue> r) {
+            ReturnValue ret = r.get();
+            return new ThenReturn<>(acceptValue, ret, condition);
+        }
+
+        public <ReturnValue> ThenReturn<AcceptValue, ReturnValue> thenReturn(Function<AcceptValue, ReturnValue> function) {
+            ReturnValue ret = function.apply(acceptValue);
+            return new ThenReturn<>(acceptValue, ret, condition);
+        }
+
+        public <ExceptionTypeName extends Throwable> AcceptValue orElseThrow(Function<String, ExceptionTypeName> rt, String message) throws Throwable {
+            ExceptionTypeName apply = rt.apply(message);
+            if(!condition)
+                throw apply;
+            else return acceptValue;
+        }
+
+
+        public static class ThenReturn<AcceptValue, ReturnValue> {
+
+            AcceptValue acceptValue;
+            ReturnValue returnValue;
+            boolean condition;
+
+
+            ThenReturn(AcceptValue acceptValue, ReturnValue returnValue, boolean condition) {
+                this.acceptValue = acceptValue;
+                this.returnValue = returnValue;
+                this.condition = condition;
+            }
+
+            public ReturnValue orElse(Function<AcceptValue, ReturnValue> function) {
+                if (!condition)
+                    function.apply(acceptValue);
+                return returnValue;
+            }
+
+            public ReturnValue orElse(Supplier<ReturnValue> r){
+                return orElse(r.get());
+            }
+
+            public ReturnValue orElse(ReturnValue returnValue){
+                if(!condition)
+                    return returnValue;
+                return this.returnValue;
+            }
+
+            public ReturnValue orElseThrow(Supplier<RuntimeException> rt) throws Throwable {
+                return orElseThrowE(rt.get());
+            }
+
+            public <ExceptionTypeName extends Throwable> ReturnValue orElseThrow(Function<String, ExceptionTypeName> rt, String message) throws Throwable {
+                ExceptionTypeName apply = rt.apply(message);
+                if(!condition)
+                    throw apply;
+                else return returnValue;
+            }
+
+            ReturnValue orElseThrowE(Exception e) throws Exception {
+                if (!condition)
+                    throw e;
+                return returnValue;
+            }
+        }
     }
 }
